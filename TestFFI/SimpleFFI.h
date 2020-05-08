@@ -75,7 +75,7 @@ extern "C" {
     *(int*)&args[1] = 9981;
      
     unsigned long rt = 0;
-    sffi_call((void*)&add, "iii", args, &rt);
+    sffi_call((void*)&add, "iii", args, &rt, -1);
     
     return *(int*)&rt;
  }
