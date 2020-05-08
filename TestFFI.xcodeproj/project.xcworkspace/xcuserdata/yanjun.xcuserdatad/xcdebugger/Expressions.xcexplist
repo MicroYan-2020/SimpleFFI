@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "puts_binding(ffi_cif*, unsigned int*, void**, __sFILE*):TestCase.mm">
+      </ContextState>
+      <ContextState
+         contextName = "-[TestCase RunCCallTestCase]:TestCase.mm">
+         <PersistentStrings>
+            <PersistentString
+               value = "$sp">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "-[TestCase RunFoo]:TestCase.mm">
+         <PersistentStrings>
+            <PersistentString
+               value = "$w3">
+            </PersistentString>
+            <PersistentString
+               value = "$x1">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "raw_call(unsigned long*, unsigned long*, unsigned char*, long, void*):TestCase.mm">
+         <PersistentStrings>
+            <PersistentString
+               value = "*(char*)($x9-1)">
+            </PersistentString>
+            <PersistentString
+               value = "*(char*)($x2-1)">
+            </PersistentString>
+            <PersistentString
+               value = "*(int*)($sp+4)">
+            </PersistentString>
+            <PersistentString
+               value = "$w10">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "+[TestFFI Run]:TestFFI.mm">
+         <PersistentStrings>
+            <PersistentString
+               value = "7">
+            </PersistentString>
+            <PersistentString
+               value = "(13|7)">
+            </PersistentString>
+            <PersistentString
+               value = "13">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>
