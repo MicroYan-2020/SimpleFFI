@@ -10,6 +10,7 @@
 #include "include/ffi/ffi.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 #include <arm_neon.h>
+#include "SimpleFFI.h"
 
 struct st_tt {
     char i1;
@@ -177,6 +178,20 @@ ST_FOO add_st(ST_FOO a, ST_FOO b){
     ffi_call(&cif, (void (*)(void))func, (void*)&ret, (void**)args); //调用
 
     NSLog(@"r = %f", ret);
+    
+    {
+        unsigned long args[4];
+        args[0] = (unsigned long)(__bridge void*)tf;
+        args[1] = (unsigned long)@selector (Add:B:);
+        args[2] =3;
+        *(float*)&args[3] = 3.14;
+        
+        unsigned long r = 0;
+        sffi_call((void*)func, "fppif", (unsigned long*)args, &r);
+        
+        NSLog(@"r = %f", *(float*)&r);
+    }
+    
 }
 
 +(void)Run {

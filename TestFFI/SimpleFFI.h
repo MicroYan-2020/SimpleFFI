@@ -87,7 +87,8 @@ extern "C" {
 #define SFFI_ERR_OVERFLOW        3
 #define SFFI_ERR_UNSUPORT_ARCH   4
 
-int sffi_call(void* addr, const char* sign, unsigned long* args, unsigned long* rt, int fix_arg_count);
+int sffi_call(void* addr, const char* sign, unsigned long* args, unsigned long* rt);
+int sffi_call_var(void* addr, const char* sign, unsigned long* args, unsigned long* rt, int fix_arg_count);
 
 #ifdef __cplusplus
 }

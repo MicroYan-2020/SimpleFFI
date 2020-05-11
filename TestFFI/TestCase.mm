@@ -188,62 +188,62 @@ strcpy(GTestCaseName, NAME);GTestDataIndex = 0;GCurFuncSign[0] = 0;strcat(GCurFu
 #define RUN_TC1(NAME,T1) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0); \
-sffi_call((void*)&RunTestFunc<T1>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC2(NAME,T1,T2) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0); \
-sffi_call((void*)&RunTestFunc<T1,T2>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC3(NAME,T1,T2,T3) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC4(NAME,T1,T2,T3,T4) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC5(NAME,T1,T2,T3,T4,T5) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC6(NAME,T1,T2,T3,T4,T5,T6) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0, (T6)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC7(NAME,T1,T2,T3,T4,T5,T6,T7) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0, (T6)0, (T7)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC8(NAME,T1,T2,T3,T4,T5,T6,T7,T8) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0, (T6)0, (T7)0,(T8)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC9(NAME,T1,T2,T3,T4,T5,T6,T7,T8,T9) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0, (T6)0, (T7)0,(T8)0,(T9)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC10(NAME,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0, (T6)0, (T7)0,(T8)0,(T9)0,(T10)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC11(NAME,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0, (T6)0, (T7)0,(T8)0,(T9)0,(T10)0,(T11)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC12(NAME,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12) \
 {RUN_TC_GPARAMS_INIT(NAME); \
 InitTestData((T1)0,(T2)0,(T3)0,(T4)0,(T5)0,(T6)0,(T7)0,(T8)0,(T9)0,(T10)0,(T11)0,(T12)0); \
-sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12>, GCurFuncSign, GArgs, &rt, -1);}
+sffi_call((void*)&RunTestFunc<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12>, GCurFuncSign, GArgs, &rt);}
 
 #define RUN_TC2_ONE_TYPE(NAME, T) RUN_TC2(NAME,T,T)
 #define RUN_TC3_ONE_TYPE(NAME, T) RUN_TC3(NAME,T,T,T)
@@ -267,7 +267,7 @@ T GetTypeValue(){
 template<class T>
 void TestSimpleFFIReturnValue(){
     unsigned long rt = 0;
-    sffi_call((void*)&GetTypeValue<T>, GetTypeAttr<T>()->sign, NULL, &rt, -1);
+    sffi_call((void*)&GetTypeValue<T>, GetTypeAttr<T>()->sign, NULL, &rt);
     
     if(!VarProc<T>::equal(*(T*)&rt, *(T*)&GArgs[0])){
         std::cout << "Test Fail: " << GTestCaseName << " v1=" << *(T*)&rt <<
@@ -491,7 +491,7 @@ double add_var(int a, double b, ...){
         *(long*)&args[4] = 0;
         
         unsigned long rt = 0;
-        sffi_call((void*)&add_var, "didlll", args, &rt, 2);
+        sffi_call_var((void*)&add_var, "didlll", args, &rt, 2);
         
         
         if(*(double*)&rt != (6+50.5+5+70)){
@@ -513,8 +513,6 @@ __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
 }
 
 +(void) RunExample{
-    void* p = alloca(128);
-    
     unsigned long args[4] = {0};
     *(int*)&args[0] = 15;
     *(long*)&args[1] = 93;
@@ -522,7 +520,7 @@ __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
     *(double*)&args[3] = 55.4239;
     
     unsigned long rt = 0;
-    sffi_call((void*)&foo1, "dilfd", args, &rt, -1);
+    sffi_call((void*)&foo1, "dilfd", args, &rt);
     
     double r1 = foo1(15, 93, 83.134, 55.4239);
     double r2 = *(double*)&rt;
@@ -536,8 +534,7 @@ __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
         printf("fail!\n");
     }
     
-    
-    //测试变阐述
+    //测试变参函数
     {
         unsigned long args[3] = {0};
         *(char**)&args[0] = (char*)"hello %s %d";
@@ -545,7 +542,7 @@ __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
         *(int*)&args[2] = 2020;
         
         unsigned long rt = 0;
-        sffi_call((void*)&printf, "vppi", args, &rt, 1);
+        sffi_call_var((void*)&printf, "vppi", args, &rt, 1);
     }
 }
 
