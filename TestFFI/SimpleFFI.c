@@ -112,11 +112,11 @@ static char gBaseTypeFFlag['z'+1] = {0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 static struct BaseTypeInfo GBaseTypeInfo['z'+1] = {{0,0}, {0,0}, {1,0}, {8,1}};
 */
 
-int sffi_call(void* addr, const char* sign, unsigned long* args, unsigned long* rt){
-    return sffi_call_var(addr, sign, args, rt, -1);
+int sffi_call(const char* sign, unsigned long* args, void* addr, unsigned long* rt){
+    return sffi_call_var(sign, args, addr, rt, -1);
 }
 
-int sffi_call_var(void* addr, const char* sign, unsigned long* args, unsigned long* rt, int fix_arg_count){
+int sffi_call_var(const char* sign, unsigned long* args, void* addr, unsigned long* rt, int fix_arg_count){
     static char defSign[] = "v"; //默认的函数签名 void();
     if(!sign)
         sign = defSign;
