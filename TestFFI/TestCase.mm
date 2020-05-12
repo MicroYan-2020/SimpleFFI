@@ -287,7 +287,21 @@ TestSimpleFFIReturnValue<T>();
 @implementation TestCase
 
 +(void) Run {
-    [TestCase RunCCallTestCase];
+    GTCErrFlag = false;
+    
+    for(int i = 0; i < 10000; i++){
+        [TestCase RunCCallTestCase];
+        if(GTCErrFlag){
+            break;
+        }
+    }
+    
+    if(!GTCErrFlag){
+        std::cout << "All Test Pass!" << std::endl;
+    }
+    else {
+        std::cout << "Test Fail!" << std::endl;
+    }
 }
 
 double add_var(int a, double b, ...){
@@ -305,8 +319,6 @@ double add_var(int a, double b, ...){
 }
 
 +(void)RunCCallTestCase {
-    GTCErrFlag = false;
-    
     RUN_TC1("1", uint8_t);
     RUN_TC1("2", uint16_t);
     RUN_TC1("3", uint32_t);
@@ -499,12 +511,6 @@ double add_var(int a, double b, ...){
             std::cout << "Variable parameter function test Fail!" << std::endl;
         }
     }
-    
-    if(!GTCErrFlag){
-        std::cout << "All Test Pass!" << std::endl;
-    }
-    
-    
 }
 
 
@@ -514,19 +520,19 @@ __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
 
 +(void) RunExample{
     unsigned long args[4] = {0};
-    *(int*)&args[0] = 15;
+    *(int*)&args[0] = -15;
     *(long*)&args[1] = 93;
-    *(float*)&args[2] = 83.134;
+    *(float*)&args[2] = -83.134;
     *(double*)&args[3] = 55.4239;
     
     unsigned long rt = 0;
     sffi_call((void*)&foo1, "dilfd", args, &rt);
     
-    double r1 = foo1(15, 93, 83.134, 55.4239);
+    double r1 = foo1(-15, 93, -83.134, 55.4239);
     double r2 = *(double*)&rt;
 
-    printf("foo1: 15 + 93 + 83.134 + 55.4239 = %lf\n", r1);
-    printf("sffi: 15 + 93 + 83.134 + 55.4239 = %lf\n", r2);
+    printf("foo1: -15 + 93 - 83.134 + 55.4239 = %lf\n", r1);
+    printf("sffi: -15 + 93 - 83.134 + 55.4239 = %lf\n", r2);
     if(r1 == r2){
         printf("pass!\n");
     }
@@ -534,7 +540,7 @@ __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
         printf("fail!\n");
     }
     
-    //测试变参函数
+    //变参函数调用演示
     {
         unsigned long args[3] = {0};
         *(char**)&args[0] = (char*)"hello %s %d";
