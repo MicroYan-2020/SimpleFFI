@@ -42,9 +42,11 @@ struct TypeAttr GTypeAttrs[] = {
 
 template<class T>
 int TypeAttrIndex(){ return -1; }
+template<> int TypeAttrIndex<char>(){ return 0; }
 template<> int TypeAttrIndex<int8_t>(){ return 0; }
 template<> int TypeAttrIndex<int16_t>(){ return 1; }
 template<> int TypeAttrIndex<int32_t>(){ return 2; }
+template<> int TypeAttrIndex<long>(){ return 3; }
 template<> int TypeAttrIndex<int64_t>(){ return 3; }
 template<> int TypeAttrIndex<uint8_t>(){ return 4; }
 template<> int TypeAttrIndex<uint16_t>(){ return 5; }
@@ -289,7 +291,7 @@ TestSimpleFFIReturnValue<T>();
 +(void) Run {
     GTCErrFlag = false;
     
-    for(int i = 0; i < 10000; i++){
+    for(int i = 0; i < 100; i++){
         [TestCase RunCCallTestCase];
         if(GTCErrFlag){
             break;
@@ -317,6 +319,34 @@ double add_var(int a, double b, ...){
     va_end(args);
     return r;
 }
+
+void TestST(const char* name, const char* sign, int align, int size, int num_count, int* offsets){
+    struct sffi_st st;
+    sffi_get_st(sign, &st);
+    
+    if(st.align != align){
+        GTCErrFlag = true;
+        std::cout << name << " sturct align fail" << std::endl;
+    }
+    else if(st.size != size){
+        GTCErrFlag = true;
+        std::cout << name << " sturct size fail! sffi:" << (int)st.size << " org:" << size << std::endl;
+    }
+    else if(st.count != num_count){
+        GTCErrFlag = true;
+        std::cout << name << " sturct number count fail" << std::endl;
+    }
+    else {
+        for(int i = 0; i < num_count; i++){
+            if(st.numbers[i].offset != offsets[i]){
+                GTCErrFlag = true;
+                std::cout << name << " sturct number(" << i << ") offset fail! sffi:" << (int)st.numbers[i].offset << " org:" << offsets[i] << std::endl;
+                break;
+            }
+        }
+    }
+}
+
 
 +(void)RunCCallTestCase {
     RUN_TC1("1", uint8_t);
@@ -511,7 +541,281 @@ double add_var(int a, double b, ...){
             std::cout << "Variable parameter function test Fail!" << std::endl;
         }
     }
+    
+    //测试计算结构体布局
+    //普通的类型结构
+    TestSTructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST1");
+    TestSTructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST2");
+    TestSTructLayout<int8_t,int8_t,int8_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST3");
+    TestSTructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int32_t,float>("TestST4");
+    TestSTructLayout<int8_t,int16_t,double,int64_t,float,double,int8_t,int16_t,float,int64_t>("TestST5");
+    TestSTructLayout<int8_t,float,int32_t,int64_t,float,double,int8_t,float,int32_t,double>("TestST6");
+    TestSTructLayout<int8_t,int8_t,int8_t,int8_t,int8_t,int8_t,int8_t,int8_t,int8_t,int8_t>("TestST7");
+    TestSTructLayout<int16_t,float,int8_t,int64_t,int8_t,double,int8_t,int16_t,int8_t,int64_t>("TestST8");
+    TestSTructLayout<int8_t,int64_t,int8_t,int64_t,double,int64_t,int8_t,int64_t,float,int8_t>("TestST9");
+    
+    //带1层嵌套的类型结构
+    TestFixAlign0StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST10");
+    TestFixAlign0StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST20");
+    TestFixAlign0StructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST11");
+    TestFixAlign0StructLayout<int8_t,int8_t,int8_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST12");
+    TestFixAlign0StructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int32_t,float>("TestST13");
+    TestFixAlign0StructLayout<int8_t,int16_t,double,int64_t,float,double,int8_t,int16_t,float,int64_t>("TestST14");
+    TestFixAlign0StructLayout<int8_t,float,int32_t,int64_t,float,double,int8_t,float,int32_t,double>("TestST15");
+    
+    //强制对齐 1 的结构体
+    TestFixAlign1StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST20");
+    TestFixAlign1StructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST21");
+    TestFixAlign1StructLayout<int8_t,int8_t,int8_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST22");
+    TestFixAlign1StructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int32_t,float>("TestST23");
+    TestFixAlign1StructLayout<int8_t,int16_t,double,int64_t,float,double,int8_t,int16_t,float,int64_t>("TestST24");
+    TestFixAlign1StructLayout<int8_t,float,int32_t,int64_t,float,double,int8_t,float,int32_t,double>("TestST25");
+    
+    //强制对齐 2 的结构体
+    TestFixAlign2StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST30");
+    TestFixAlign2StructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST31");
+    TestFixAlign2StructLayout<int8_t,int8_t,int8_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST32");
+    TestFixAlign2StructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int32_t,float>("TestST33");
+    TestFixAlign2StructLayout<int8_t,int16_t,double,int64_t,float,double,int8_t,int16_t,float,int64_t>("TestST34");
+    TestFixAlign2StructLayout<int8_t,float,int32_t,int64_t,float,double,int8_t,float,int32_t,double>("TestST35");
+    
+    //强制对齐 4 的结构体
+    TestFixAlign4StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST30");
+    TestFixAlign4StructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST31");
+    TestFixAlign4StructLayout<int8_t,int8_t,int8_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST32");
+    TestFixAlign4StructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int32_t,float>("TestST33");
+    TestFixAlign4StructLayout<int8_t,int16_t,double,int64_t,float,double,int8_t,int16_t,float,int64_t>("TestST34");
+    TestFixAlign4StructLayout<int8_t,float,int32_t,int64_t,float,double,int8_t,float,int32_t,double>("TestST35");
+    
+    //强制对齐 8 的结构体
+    TestFixAlign8StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST40");
+    TestFixAlign8StructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST41");
+    TestFixAlign8StructLayout<int8_t,int8_t,int16_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST42");
+    TestFixAlign8StructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int8_t,float>("TestST43");
+    TestFixAlign8StructLayout<int8_t,int16_t,double,int64_t,int8_t,double,int8_t,int16_t,float,int64_t>("TestST44");
+    TestFixAlign8StructLayout<int8_t,float,int32_t,float,float,double,int8_t,float,int32_t,double>("TestST45");
+    
+    //强制对齐 16 的结构体
+    TestFixAlign16StructLayout<int8_t,int16_t,int32_t,int64_t,float,double,int8_t,int16_t,int32_t,int64_t>("TestST50");
+    TestFixAlign16StructLayout<int16_t,int16_t,int32_t,int32_t,int64_t,int64_t,int8_t,int8_t,int16_t,int16_t>("TestST51");
+    TestFixAlign16StructLayout<int8_t,int8_t,int16_t,int8_t,float,double,int8_t,int8_t,int8_t,int64_t>("TestST52");
+    TestFixAlign16StructLayout<float,int16_t,float,int64_t,float,double,int8_t,float,int8_t,float>("TestST53");
+    TestFixAlign16StructLayout<int8_t,int16_t,double,int64_t,int8_t,double,int8_t,int16_t,float,int64_t>("TestST54");
+    TestFixAlign16StructLayout<int8_t,float,int32_t,float,float,double,int8_t,float,int32_t,double>("TestST55");
 }
+
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestSTructLayout(const char* name){
+    struct Foo1{
+        T1 a; T2 b; T3 c; T4 d; T5 e; T6 f; T7 g; T8 h; T9 i; T10 j;
+    };
+    
+    struct Foo2{
+        char a;
+        Foo1 b;
+    };
+    
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, c), offsetof(Foo1, d),
+    offsetof(Foo1, e), offsetof(Foo1, f), offsetof(Foo1, g), offsetof(Foo1, h),
+    offsetof(Foo1, i), offsetof(Foo1, j)};
+    
+    std::string strSign;
+    strSign += GetTypeAttr<T1>()->sign[0];
+    strSign += GetTypeAttr<T2>()->sign[0];
+    strSign += GetTypeAttr<T3>()->sign[0];
+    strSign += GetTypeAttr<T4>()->sign[0];
+    strSign += GetTypeAttr<T5>()->sign[0];
+    strSign += GetTypeAttr<T6>()->sign[0];
+    strSign += GetTypeAttr<T7>()->sign[0];
+    strSign += GetTypeAttr<T8>()->sign[0];
+    strSign += GetTypeAttr<T9>()->sign[0];
+    strSign += GetTypeAttr<T10>()->sign[0];
+    
+    TestST(name, strSign.c_str(), offsetof(Foo2, b), sizeof(Foo1), 10, offsets);
+}
+
+void SpliceSignStr(std::string& str, int fixAlign){}
+
+template <class T ,class...  Args>
+void SpliceSignStr(std::string& str, int fixAlign, T var, Args...args){
+    if(str.empty()){
+        if(fixAlign == 1 ||
+           fixAlign == 2 ||
+           fixAlign == 4 ||
+           fixAlign == 8){
+            str += ('0'+fixAlign);
+        }
+        else if(fixAlign == 16){
+            str += "16";
+        }
+    }
+    
+    if(GetTypeAttr<T>()->sign[0] == 'c' &&
+       (var == '[' || var == ']')){
+        str += var;
+        if(var == '['){
+            if(fixAlign == 1 ||
+               fixAlign == 2 ||
+               fixAlign == 4 ||
+               fixAlign == 8){
+                str += ('0'+fixAlign);
+            }
+            else if(fixAlign == 16){
+                str += "16";
+            }
+        }
+    }
+    else {
+        str += GetTypeAttr<T>()->sign[0];
+    }
+    
+    SpliceSignStr(str, fixAlign, args...);
+}
+
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void SpliceSignStrWith10(std::string& str, int fixAlign){
+    SpliceSignStr(str, fixAlign, VarProc<T1>::min(), '[', VarProc<T2>::min(), VarProc<T3>::min(), VarProc<T4>::min(),
+                  VarProc<T5>::min(), ']', '[',  VarProc<T6>::min(), VarProc<T7>::min(), VarProc<T8>::min(), ']',
+                  VarProc<T9>::min(), VarProc<T10>::min());
+}
+
+#undef TC_FIX_ALIGN
+#define TC_FIX_ALIGN 0
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestFixAlign0StructLayout(const char* name){
+#pragma pack(TC_FIX_ALIGN)
+    struct Foo2{ T2 b; T3 c; T4 d; T5 e; };
+    struct Foo3{ T6 f; T7 g; T8 h; };
+    struct Foo1{ T1 a; Foo2 b; Foo3 c; T9 d; T10 e; };
+#pragma pack()
+    struct Foo4{ char a; Foo1 b; };
+
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, b) + offsetof(Foo2, c), offsetof(Foo1, b) + offsetof(Foo2, d),
+    offsetof(Foo1, b) + offsetof(Foo2, e), offsetof(Foo1, c), offsetof(Foo1, c) + offsetof(Foo3, g), offsetof(Foo1, c) + offsetof(Foo3, h),
+    offsetof(Foo1, d), offsetof(Foo1, e)};
+    
+    std::string strSign;
+    SpliceSignStrWith10<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(strSign, TC_FIX_ALIGN);
+    
+    TestST(name, strSign.c_str(), offsetof(Foo4, b), sizeof(Foo1), 10, offsets);
+}
+
+#undef TC_FIX_ALIGN
+#define TC_FIX_ALIGN 1
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestFixAlign1StructLayout(const char* name){
+#pragma pack(TC_FIX_ALIGN)
+    struct Foo2{ T2 b; T3 c; T4 d; T5 e; };
+    struct Foo3{ T6 f; T7 g; T8 h; };
+    struct Foo1{ T1 a; Foo2 b; Foo3 c; T9 d; T10 e; };
+#pragma pack()
+    struct Foo4{ char a; Foo1 b; };
+
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, b) + offsetof(Foo2, c), offsetof(Foo1, b) + offsetof(Foo2, d),
+    offsetof(Foo1, b) + offsetof(Foo2, e), offsetof(Foo1, c), offsetof(Foo1, c) + offsetof(Foo3, g), offsetof(Foo1, c) + offsetof(Foo3, h),
+    offsetof(Foo1, d), offsetof(Foo1, e)};
+    
+    std::string strSign;
+    SpliceSignStrWith10<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(strSign, TC_FIX_ALIGN);
+    
+    TestST(name, strSign.c_str(), offsetof(Foo4, b), sizeof(Foo1), 10, offsets);
+}
+
+
+
+#undef TC_FIX_ALIGN
+#define TC_FIX_ALIGN 2
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestFixAlign2StructLayout(const char* name){
+#pragma pack(TC_FIX_ALIGN)
+    struct Foo2{ T2 b; T3 c; T4 d; T5 e; };
+    struct Foo3{ T6 f; T7 g; T8 h; };
+    struct Foo1{ T1 a; Foo2 b; Foo3 c; T9 d; T10 e; };
+#pragma pack()
+    struct Foo4{ char a; Foo1 b; };
+
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, b) + offsetof(Foo2, c), offsetof(Foo1, b) + offsetof(Foo2, d),
+    offsetof(Foo1, b) + offsetof(Foo2, e), offsetof(Foo1, c), offsetof(Foo1, c) + offsetof(Foo3, g), offsetof(Foo1, c) + offsetof(Foo3, h),
+    offsetof(Foo1, d), offsetof(Foo1, e)};
+    
+    std::string strSign;
+    SpliceSignStrWith10<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(strSign, TC_FIX_ALIGN);
+    
+    TestST(name, strSign.c_str(), offsetof(Foo4, b), sizeof(Foo1), 10, offsets);
+}
+
+#undef TC_FIX_ALIGN
+#define TC_FIX_ALIGN 4
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestFixAlign4StructLayout(const char* name){
+#pragma pack(TC_FIX_ALIGN)
+    struct Foo2{ T2 b; T3 c; T4 d; T5 e; };
+    struct Foo3{ T6 f; T7 g; T8 h; };
+    struct Foo1{ T1 a; Foo2 b; Foo3 c; T9 d; T10 e; };
+#pragma pack()
+    struct Foo4{ char a; Foo1 b; };
+
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, b) + offsetof(Foo2, c), offsetof(Foo1, b) + offsetof(Foo2, d),
+    offsetof(Foo1, b) + offsetof(Foo2, e), offsetof(Foo1, c), offsetof(Foo1, c) + offsetof(Foo3, g), offsetof(Foo1, c) + offsetof(Foo3, h),
+    offsetof(Foo1, d), offsetof(Foo1, e)};
+    
+    std::string strSign;
+    SpliceSignStrWith10<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(strSign, TC_FIX_ALIGN);
+    
+    TestST(name, strSign.c_str(), offsetof(Foo4, b), sizeof(Foo1), 10, offsets);
+}
+
+#undef TC_FIX_ALIGN
+#define TC_FIX_ALIGN 8
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestFixAlign8StructLayout(const char* name){
+#pragma pack(TC_FIX_ALIGN)
+    struct Foo2{ T2 b; T3 c; T4 d; T5 e; };
+    struct Foo3{ T6 f; T7 g; T8 h; };
+    struct Foo1{ T1 a; Foo2 b; Foo3 c; T9 d; T10 e; };
+#pragma pack()
+    struct Foo4{ char a; Foo1 b; };
+
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, b) + offsetof(Foo2, c), offsetof(Foo1, b) + offsetof(Foo2, d),
+    offsetof(Foo1, b) + offsetof(Foo2, e), offsetof(Foo1, c), offsetof(Foo1, c) + offsetof(Foo3, g), offsetof(Foo1, c) + offsetof(Foo3, h),
+    offsetof(Foo1, d), offsetof(Foo1, e)};
+    
+    std::string strSign;
+    SpliceSignStrWith10<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(strSign, TC_FIX_ALIGN);
+    
+    TestST(name, strSign.c_str(), offsetof(Foo4, b), sizeof(Foo1), 10, offsets);
+}
+
+#undef TC_FIX_ALIGN
+#define TC_FIX_ALIGN 16
+template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
+void TestFixAlign16StructLayout(const char* name){
+#pragma pack(TC_FIX_ALIGN)
+    struct Foo2{ T2 b; T3 c; T4 d; T5 e; };
+    struct Foo3{ T6 f; T7 g; T8 h; };
+    struct Foo1{ T1 a; Foo2 b; Foo3 c; T9 d; T10 e; };
+#pragma pack()
+    struct Foo4{ char a; Foo1 b; };
+
+    int offsets[10] = {
+    offsetof(Foo1, a), offsetof(Foo1, b), offsetof(Foo1, b) + offsetof(Foo2, c), offsetof(Foo1, b) + offsetof(Foo2, d),
+    offsetof(Foo1, b) + offsetof(Foo2, e), offsetof(Foo1, c), offsetof(Foo1, c) + offsetof(Foo3, g), offsetof(Foo1, c) + offsetof(Foo3, h),
+    offsetof(Foo1, d), offsetof(Foo1, e)};
+    
+    std::string strSign;
+    SpliceSignStrWith10<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(strSign, TC_FIX_ALIGN);
+    
+    TestST(name, strSign.c_str(), offsetof(Foo4, b), sizeof(Foo1), 10, offsets);
+}
+
+
+
 
 
 __attribute__ ((noinline)) double foo1(int a, long b, float c, double d){
