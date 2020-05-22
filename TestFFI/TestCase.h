@@ -12,7 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface TestCase : NSObject
 +(void) Run;
-+(void) RunExample;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -24,10 +24,6 @@
     [TestFFI Run];
 }
 
-- (IBAction)OnTestSimpleFFI:(id)sender {
-    [TestCase RunExample];
-}
-
 - (IBAction)OnRunSimpleFFITestCase:(id)sender {
     [TestCase Run];
 }

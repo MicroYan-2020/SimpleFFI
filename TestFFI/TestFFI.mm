@@ -239,53 +239,7 @@ __attribute__ ((noinline)) struct Foo1 show_char_ary(int a1, int a2, int a3, int
     return a;
 }
 
-
-void ShowSTAsmCode(){
-    {
-        printf("%d \n", sizeof(Foo1));
-        
-        Foo1 a;
-        a.a = 0x11;
-        a.b.b = 0xffffffff;
-        //*(int*)&a.c = 0xeeeeeeeeeeeeeeee;
-        //*(long*)&a.d = 0xcccccccccccccccc;
-        Foo1 b = show_char_ary(1,2,3,4,5,6,7,8,9,0xdc,a);
-        printf("%f %f \n", b.a, b.b);
-    }
-    
-    
-    Foo a;
-    //a.a = 1;
-    a.b.a1 = 2;
-    a.c.a1 = 3;
-    a.c.b1  = 4;
-    
-    Foo b;
-   // b.a = 5;
-    b.b.a1 = 6;
-    b.c.a1 = 7;
-    b.c.b1  = 8;
-    
-    a = show(a,b);
-    printf("%d \n", a.c.b1);
-    
-    /*
-    
-    #pragma pack(2)
-    struct Foo1 {
-        char a;
-        double b;
-        char c;
-    };
-    #pragma pack()
-    
-    printf("sz = %lu  %ld %ld %ld\n", sizeof(Foo), OFFSET(Foo, a), OFFSET(Foo, b), OFFSET(Foo, c));
-    printf("sz = %lu  %ld %ld %ld \n", sizeof(Foo1), OFFSET(Foo1, a), OFFSET(Foo1, b), OFFSET(Foo1, c));*/
-}
-
 +(void)Run {
-    //ShowSTAsmCode();
-    
     [TestFFI TestOCFuncWithFFI];
     [TestFFI TestVarArgsWithFFI];
     [TestFFI TestStructWithFFI];
