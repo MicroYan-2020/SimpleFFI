@@ -127,7 +127,9 @@ struct sffi_arg {
     unsigned char size;        //参数的大小
     unsigned char isST;        //参数是否是复合结构
     unsigned char offset;      //参数在复合结构中的偏移地址
-    unsigned char destType;    //1 复制到通用寄存器上. 2 复制到浮点寄存器上。3 复制到堆栈上
+    unsigned char destType;    //1 复制到通用寄存器上
+                               //2 复制到浮点寄存器上
+                               //3 复制到堆栈上
     unsigned char destIndex;   //对应的索引
 };
 
@@ -144,13 +146,13 @@ struct sffi_ctpl{
                                //SFFI_PASS_BY_VR_MONO
                                //SFFI_PASS_BY_POINT
                                //SFFI_PASS_BY_GR_MONO
-    unsigned char rtCount;     //返回值元素的数量，结构体可能是多个
-    unsigned char rtSize;      //返回值的大小
+    unsigned char countRT;     //返回值元素的数量，结构体可能是多个
+    unsigned char sizeRT;      //返回值的大小
     struct sffi_arg args;      //最终生成参数的时候，会生成多个参数，通过 (&args)[0-n] 访问
 };
 
 /*
- 通过签名，生成到结构体的信息，包括结构体有几个成员，结构体的便宜，每个成员的大小和偏移等
+ 通过签名，生成到结构体的信息，包括结构体有几个成员，结构体的偏移，每个成员的大小和偏移等
  sign      签名
  st        结构体信息
  endIndex  描述结构体签名结束的地方, 比如 “[cdfi]”, ‘]’ 后就是index的位置
@@ -192,16 +194,13 @@ int sffi_get_st_inner(const char* sign, struct sffi_st* st, int* endIndex){
             }
             
             //对齐
-            if(fixAlign > 0 && fixAlign < numSize){ //如果强制对齐小于成员对齐，使用强制对齐
+            if(fixAlign > 0 && fixAlign < numSize) //如果强制对齐小于成员对齐，使用强制对齐
                 offset = SFFI_ALIGN(offset, fixAlign);
-            }
-            else {
+            else
                 offset = SFFI_ALIGN(offset, numSize);
-            }
             
-            if(align < numSize){ //如果成员的对齐，大于结构体的对齐，更新结构体对齐
+            if(align < numSize) //如果成员的对齐，大于结构体的对齐，更新结构体对齐
                 align = numSize;
-            }
             
             struct sffi_st_member* num = &st->members[count++];
             num->sign = signCode;
@@ -232,7 +231,6 @@ int sffi_get_st_inner(const char* sign, struct sffi_st* st, int* endIndex){
                     else {
                         fixAlign = signCode-'0';
                     }
-                    
                 }
                     break;
                     
@@ -248,24 +246,21 @@ int sffi_get_st_inner(const char* sign, struct sffi_st* st, int* endIndex){
                     index += rIndex - 1;
                     
                     //对齐
-                    if(fixAlign > 0 && fixAlign < sub.align){
+                    if(fixAlign > 0 && fixAlign < sub.align)
                         offset = SFFI_ALIGN(offset, fixAlign);
-                    }
-                    else {
+                    else
                         offset = SFFI_ALIGN(offset, sub.align);
-                    }
                     
-                    if(align < sub.align){
+                    if(align < sub.align)
                         align = sub.align;
-                    }
 
-                    //把子结构的成员添加到现在的队列中
+                    //把子结构的成员展开，添加到总的队列中
                     for(int i = 0; i < sub.count; i++){
                         struct sffi_st_member* subNum = &sub.members[i];
                         struct sffi_st_member* num = &st->members[count++];
                         num->sign = subNum->sign;
-                        num->offset = offset + subNum->offset;
                         num->size = subNum->size;
+                        num->offset = offset + subNum->offset;
                         
                         if(!endIndex){
                             //printf("num(%d) offset:%d  size:%d\n", count, num->offset, num->size);
@@ -350,8 +345,8 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
     int index = 0;     //签名位置的索引
     
     //先处理返回值=========================================
-    unsigned char rtSize = 0;       //返回值的大小
-    unsigned char rtCount = 0;      //返回值包含元素的个数，如果是结构体，指的就是结构体成员的个数
+    unsigned char sizeRT = 0;       //返回值的大小
+    unsigned char countRT = 0;      //返回值包含元素的个数，如果是结构体，指的就是结构体成员的个数
     unsigned char rtPassType = 0;   //返回值的传递类型
     
     {
@@ -363,8 +358,8 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
             err_code = sffi_get_st_inner(&sign[1], &st, &endIndex);
             SFFI_CHECK_RESULT();
             
-            rtSize = st.size;           //大小
-            rtCount = st.count;         //元素数量
+            sizeRT = st.size;           //大小
+            countRT = st.count;         //元素数量
             rtPassType = st.passType;   //传递类型
             
             index += endIndex + 1;      //跳过结构体的签名段
@@ -375,13 +370,13 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                 SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
             }
 
-            rtSize = gBaseTypeSize[signCode-'a'];
-            if(rtSize != 0) {
-                if(rtSize > 32){ //如果是通过寄存器返回，大小不能超过 8*4
+            sizeRT = gBaseTypeSize[signCode-'a'];
+            if(sizeRT != 0) {
+                if(sizeRT > 32){ //如果是通过寄存器返回，大小不能超过 8*4
                     SFFI_FUNC_RETURN(SFFI_ERR_INVALID_PARAMS);
                 }
                 
-                rtCount = 1;
+                countRT = 1;
                 
                 if(gBaseTypeFFlag[signCode-'a'])
                     rtPassType = SFFI_PASS_BY_VR_MONO;
@@ -557,8 +552,8 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
     (*rt)->sizeVR = nUseVR;
     (*rt)->sizeStack = NSAA;
     (*rt)->rtPassType = rtPassType;
-    (*rt)->rtSize = rtSize;
-    (*rt)->rtCount = rtCount;
+    (*rt)->sizeRT = sizeRT;
+    (*rt)->countRT = countRT;
     (*rt)->countArg = nArgCount;
     (*rt)->countFixArg = (unsigned char)countFixArg;
     sffi_memcpy(&(*rt)->args, args, sizeof(struct sffi_arg) * nArgCount);
@@ -620,11 +615,11 @@ int sffi_call_with_ctpl(struct sffi_ctpl* ctpl, unsigned long* args, void* addr,
     //如果需要保存返回值，根据类型，保存返回结果
     if(rt){
         if(ctpl->rtPassType == SFFI_PASS_BY_GR_SHARE){  //共享通用寄存器
-            sffi_memcpy(rt, &XR[0], ctpl->rtSize);
+            sffi_memcpy(rt, &XR[0], ctpl->sizeRT);
         }
         else if(ctpl->rtPassType == SFFI_PASS_BY_VR_MONO){ //独占浮点寄存器
-            int memberSize = ctpl->rtSize / ctpl->rtCount; //只有HFA会走这里，一定是1-4个相同的float或者double
-            for(int i = 0; i < ctpl->rtCount; i++){
+            int memberSize = ctpl->sizeRT / ctpl->countRT; //只有HFA会走这里，一定是1-4个相同的float或者double
+            for(int i = 0; i < ctpl->countRT; i++){
                 sffi_memcpy(((unsigned char*)rt + i * memberSize), &XR[4+i], memberSize);
             }
         }
