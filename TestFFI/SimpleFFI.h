@@ -2,7 +2,7 @@
 //  SimpleFFI.h
 //  TestFFI
 //
-//  Created by yanjun on 2020/5/5.
+//  Created by micro on 2020/5/5.
 //  Copyright © 2020 yanjun. All rights reserved.
 //
 
