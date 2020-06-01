@@ -3,7 +3,7 @@
 //  TestFFI
 //
 //  Created by micro on 2020/5/5.
-//  Copyright © 2020 yanjun. All rights reserved.
+//  Copyright © 2020 micro. All rights reserved.
 //
 
 #ifndef SimpleFFI_h
@@ -52,7 +52,7 @@ extern "C" {
 #define SFFI_ERR_INVALID_PARAMS  1             //入参错误
 #define SFFI_ERR_UNSUPPORT_TYPE  2             //签名中的类型不支持
 #define SFFI_ERR_OVERFLOW        3             //参数太多，超过了内部限制，可能是参数个数、可能是栈空间大小
-#define SFFI_ERR_UNSUPORT_ARCH   4             //不支持的架构平台
+#define SFFI_ERR_UNSUPPORT_ARCH   4             //不支持的架构平台
 #define SFFI_ERR_UNSUPPORT_ST_PASS_TYPE  5     //不支持的结构体，传递类型
 
 //参数传递规则
@@ -65,27 +65,31 @@ extern "C" {
 #define SFFI_MAX_ARG_COUNT 24        //函数参数数量最大值，结构体成员数和函数参数数都收这个限制
 #define SFFI_MAX_ARG_STACK_SIZE 128  //存放参数栈的最大值，必须 16 对齐
 
+#ifndef UChar
+#define UChar unsigned char
+#endif
+
 //结构体成员的信息
 struct sffi_st_member{
-    unsigned char sign;     //签名
-    unsigned char offset;   //偏移
-    unsigned char size;     //大小
+    UChar sign;     //签名
+    UChar offset;   //偏移
+    UChar size;     //大小
 };
 
 //结构体的信息
 struct sffi_st {
-    unsigned char align;         //结构体的对齐，是其成员中对齐的最大值，
+    UChar align;         //结构体的对齐，是其成员中对齐的最大值，
                                  //如果有增加编译选项，限制对齐数字，编译选项优先
-    unsigned char size;          //结构体大小
-    unsigned char count;         //成员数量
-    unsigned char passType;      //传输类型，SFFI_PASS_BY_*
+    UChar size;          //结构体大小
+    UChar count;         //成员数量
+    UChar passType;      //传输类型，SFFI_PASS_BY_*
     struct sffi_st_member members[SFFI_MAX_ARG_COUNT]; //所有成员信息
 };
 
 /*
  通过签名，解析出 sffi_st 信息
  */
-int sffi_get_st(const char* sign, struct sffi_st* st);
+int sffi_prep_st(const char* sign, struct sffi_st* st);
 
 /*
  通过签名，调用指定函数

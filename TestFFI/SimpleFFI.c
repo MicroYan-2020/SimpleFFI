@@ -3,12 +3,11 @@
 //  TestFFI
 //
 //  Created by micro on 2020/5/5.
-//  Copyright © 2020 yanjun. All rights reserved.
+//  Copyright © 2020 micro. All rights reserved.
 //
 
 #include "SimpleFFI.h"
 #include <stdlib.h>
-#include <stdio.h>
 
 #if defined (__arm64__)
 
@@ -20,13 +19,35 @@ len(x2) 长度
 __attribute__ ((naked)) void sffi_memcpy(void* des, void* src, unsigned long len){
     __asm__ (
              "1:\n"
-             "cmp x2, 0\n"              //把 x2(len) 与 0 比较
-             "b.eq 2f\n"                //相等，这条转到 ret
-             "ldrb w9, [x1], #0x1\n"   //从 x1(src) 读 1byte 到 w10，x1++
-             "strb w9, [x0], #0x1\n"   //把 w10 写 1byte 到 x0(des)，x0++
-             "sub x2, x2, #1\n"         //x2(len)--
-             "b 1b\n"                   //跳
+             "cmp x2, #16\n"
+             "b.lo 2f\n"
+             "ldp x9,x10,[x1],#16\n"
+             "stp x9,x10,[x0],#16\n"
+             "sub x2,x2,#16\n"
+             "b 1b\n"
+             
              "2:\n"
+             "cmp x2, #8\n"
+             "b.lo 3f\n"
+             "ldr x9,[x1],#8\n"
+             "str x9,[x0],#8\n"
+             "sub x2,x2,#8\n"
+             
+             "3:\n"
+             "cmp x2, #4\n"
+             "b.lo 4f\n"
+             "ldr w9,[x1],#4\n"
+             "str w9,[x0],#4\n"
+             "sub x2,x2,#4\n"
+             
+             "4:\n"
+             "cmp x2, 0\n"              //比较 x2(len) 与 0
+             "b.eq 5f\n"                //相等，跳 5: 结束
+             "ldrb w9, [x1], #0x1\n"    //从 x1(src) 读 1byte 到 w10，x1++
+             "strb w9, [x0], #0x1\n"    //把 w10 写 1byte 到 x0(des)，x0++
+             "sub x2, x2, #1\n"         //x2(len)--
+             "b 4b\n"                   //跳 1:
+             "5:\n"
              "ret"
              );
 }
@@ -40,7 +61,7 @@ __attribute__ ((naked)) void sffi_memcpy(void* des, void* src, unsigned long len
  rt(x5)    返回值地址，会直接设置给 x8，再没有其他操作
  */
 __attribute__ ((naked)) void sffi_raw_call(unsigned long* regX, unsigned long* regV,
-                                           unsigned char* stack, long sl, void* addr, void* rt){
+                                           UChar* stack, long sl, void* addr, void* rt){
     __asm__ __volatile__(
                          "sub sp, sp, #0x10\n"              //要调用目标函数 addr，需要保存 x29(fp) x30(lr），堆上分配空间 0x10(16)字节
                          "stp x29, x30, [sp]\n"             //保存 x29,x30
@@ -48,7 +69,6 @@ __attribute__ ((naked)) void sffi_raw_call(unsigned long* regX, unsigned long* r
     
                          "sub sp, sp, #0x10\n"              //函数最后要用到 x0(regX)，把它保存到栈上，sp要16byte对齐
                          "str x0, [sp]\n"                   //保存x0到栈顶，此时堆栈是这样的 (x0, 不用, x29, x30)
-                                                            //现在栈的样子是 (x0, 不用, x29, x30)
                          "mov x8, x5\n"                     //先把 rt 设置给 x8，用不用都可以
                           
                          //设置通过栈传递的参数
@@ -100,12 +120,12 @@ __attribute__ ((naked)) void sffi_raw_call(unsigned long* regX, unsigned long* r
 }
 
 #define SFFI_ALIGN(v,a)  (((((unsigned long) (v))-1) | ((a)-1))+1)
-#define SFFI_FUNC_RETURN(ERR_CODE) {err_code=ERR_CODE;goto end;}
-#define SFFI_CHECK_RESULT(){if(err_code!=SFFI_ERR_OK){ goto end; }}
+#define SFFI_FUNC_RETURN(ERR_CODE) {errCode=ERR_CODE;goto end;}
+#define SFFI_CHECK_RESULT(){if(errCode!=SFFI_ERR_OK){ goto end; }}
 
 //                                a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
-static char gBaseTypeSize[26]  = {0,0,1,8,0,4,0,0,4,0,0,8,1,8,0,8,0,0,2,0,4,0,2,0,0,0}; // 根据signCode 得到对应类型的大小
-static char gBaseTypeFFlag[26] = {0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // 根据signCode 得到是否是浮点数
+static char GBaseTypeSize[26]  = {0,0,1,8,0,4,0,0,4,0,0,8,1,8,0,8,0,0,2,0,4,0,2,0,0,0}; // 根据signCode 得到对应类型的大小
+static char GBaseTypeFFlag[26] = {0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // 根据signCode 得到是否是浮点数
 
 int sffi_call(const char* sign, unsigned long* args, void* addr, void* rt){
     return sffi_call_var(sign, args, addr, rt, 0);
@@ -121,178 +141,36 @@ int sffi_call_var(const char* sign, unsigned long* args, void* addr, void* rt, i
     return r;
 }
 
-//call template arg
+//调用模版中，参数的信息
 struct sffi_arg {
-    unsigned char index;       //参数在参数列表中的索引
-    unsigned char size;        //参数的大小
-    unsigned char isST;        //参数是否是复合结构
-    unsigned char offset;      //参数在复合结构中的偏移地址
-    unsigned char destType;    //1 复制到通用寄存器上
-                               //2 复制到浮点寄存器上
-                               //3 复制到堆栈上
-    unsigned char destIndex;   //对应的索引
+    UChar index;       //参数在参数列表中的索引
+    UChar size;        //参数的大小
+    UChar isST;        //参数是否是复合结构
+    UChar offset;      //参数在复合结构中的偏移地址
+    UChar destType;    //1 复制到通用寄存器上
+                       //2 复制到浮点寄存器上
+                       //3 复制到堆栈上
+    UChar destIndex;   //对应的索引
 };
 
 #define SFFI_CTPL_MAGIC 0xc7
+//调用模版
 struct sffi_ctpl{
-    unsigned char magic;       //标志， SFFI_CTPL_MAGIC, release的时候，简单校验一下
-    unsigned char sizeGR;      //通用寄存器用的数量
-    unsigned char sizeVR;      //浮点寄存器用的数量
-    unsigned char sizeStack;   //堆栈用的空间
-    unsigned char countArg;    //参数的数量
-    unsigned char countFixArg; //固定参数的数量(0表示不是变参函数)
-    unsigned char rtPassType;  //SFFI_PASS_BY_VOID
-                               //SFFI_PASS_BY_GR_SHARE
-                               //SFFI_PASS_BY_VR_MONO
-                               //SFFI_PASS_BY_POINT
-                               //SFFI_PASS_BY_GR_MONO
-    unsigned char countRT;     //返回值元素的数量，结构体可能是多个
-    unsigned char sizeRT;      //返回值的大小
-    struct sffi_arg args;      //最终生成参数的时候，会生成多个参数，通过 (&args)[0-n] 访问
+    UChar magic;       //标志， SFFI_CTPL_MAGIC, release的时候，简单校验一下
+    UChar sizeGR;      //通用寄存器用的数量
+    UChar sizeVR;      //浮点寄存器用的数量
+    UChar sizeStack;   //堆栈用的空间
+    UChar countArg;    //参数的数量
+    UChar countFixArg; //固定参数的数量(0表示不是变参函数)
+    UChar rtPassType;  //SFFI_PASS_BY_*
+    UChar countRT;     //返回值元素的数量，结构体可能是多个
+    UChar sizeRT;      //返回值的大小
+    struct sffi_arg args;      //结构体分配空间时，会生成多个此结构体，通过 (&args)[n] 访问
 };
 
-/*
- 通过签名，生成到结构体的信息，包括结构体有几个成员，结构体的偏移，每个成员的大小和偏移等
- sign      签名
- st        结构体信息
- endIndex  描述结构体签名结束的地方, 比如 “[cdfi]”, ‘]’ 后就是index的位置
- */
-int sffi_get_st_inner(const char* sign, struct sffi_st* st, int* endIndex){
-    if(!sign || sign[0] == 0 || !st){
-        return SFFI_ERR_INVALID_PARAMS;
-    }
+char sffi_is_hfa(struct sffi_st* st){
+    char r = 0;
     
-    int err_code = SFFI_ERR_OK;
-    
-    char signCode = 0;
-    
-    unsigned char count = 0;   //结构体成员数，如果有子结构体，会展开
-    unsigned char align = 0;   //结构体对齐
-    unsigned char offset = 0;  //成员的偏移
-    unsigned char fixAlign = 0;//结构体强制的对齐大小
-    
-    int index = 0;
-
-    for(; sign[index] != 0; index++){
-        signCode = sign[index];
-        
-        if(signCode == ']'){
-            index++;
-            break;
-        }
-        
-        if(signCode >= 'a' && signCode <= 'z'){ //基本类型
-            //如果成员数超过最大限制
-            if(count >= SFFI_MAX_ARG_COUNT){
-                SFFI_FUNC_RETURN(SFFI_ERR_OVERFLOW);
-            }
-
-            //根据类型大小判断合法性
-            unsigned char numSize = gBaseTypeSize[signCode-'a'];
-            if(numSize == 0){ //大小不合法
-                SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
-            }
-            
-            //对齐
-            if(fixAlign > 0 && fixAlign < numSize) //如果强制对齐小于成员对齐，使用强制对齐
-                offset = SFFI_ALIGN(offset, fixAlign);
-            else
-                offset = SFFI_ALIGN(offset, numSize);
-            
-            if(align < numSize) //如果成员的对齐，大于结构体的对齐，更新结构体对齐
-                align = numSize;
-            
-            struct sffi_st_member* num = &st->members[count++];
-            num->sign = signCode;
-            num->offset = offset;
-            num->size = numSize;
-            offset += numSize;
-            
-            if(!endIndex){
-                //printf("num(%d) offset:%d  size:%d\n", count, num->offset, num->size);
-            }
-        }
-        else {
-            switch (signCode) {
-                case '1':
-                case '2':
-                case '4':
-                case '8':
-                {
-                    if(index != 0 && sign[index-1] != '['){ // '[' 后跟的数表示结构体强制对齐的大小，可选
-                        SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
-                    }
-                    
-                    //align = 16
-                    if(signCode == '1' && sign[index+1] == '6'){
-                        index++;
-                        fixAlign = 16;
-                    }
-                    else {
-                        fixAlign = signCode-'0';
-                    }
-                }
-                    break;
-                    
-                case '[':
-                {
-                    index++;
-                    
-                    int rIndex = 0;
-                    struct sffi_st sub = {0};
-                    err_code = sffi_get_st_inner(&sign[index], &sub, &rIndex);
-                    SFFI_CHECK_RESULT();
-
-                    index += rIndex - 1;
-                    
-                    //对齐
-                    if(fixAlign > 0 && fixAlign < sub.align)
-                        offset = SFFI_ALIGN(offset, fixAlign);
-                    else
-                        offset = SFFI_ALIGN(offset, sub.align);
-                    
-                    if(align < sub.align)
-                        align = sub.align;
-
-                    //把子结构的成员展开，添加到总的队列中
-                    for(int i = 0; i < sub.count; i++){
-                        struct sffi_st_member* subNum = &sub.members[i];
-                        struct sffi_st_member* num = &st->members[count++];
-                        num->sign = subNum->sign;
-                        num->size = subNum->size;
-                        num->offset = offset + subNum->offset;
-                        
-                        if(!endIndex){
-                            //printf("num(%d) offset:%d  size:%d\n", count, num->offset, num->size);
-                        }
-                    }
-                    
-                    offset += sub.size;
-                }
-                    break;
-                default:
-                {
-                    SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
-                }
-                    break;
-            }
-        }
-    }
-    
-    st->align = align;
-    if(fixAlign > 0 && fixAlign < st->align){
-        st->align = fixAlign;
-    }
-    
-    st->count = count;
-    st->size = SFFI_ALIGN(offset, st->align);
-    
-    if(endIndex){
-        *endIndex = index;
-    }
-    
-    //判断是否是 HFA
-    char isHFA = 0;
     do{
         if(st->count > 4 || st->count == 0)
             break;  //HFA 必须是 1-4个
@@ -308,26 +186,144 @@ int sffi_get_st_inner(const char* sign, struct sffi_st* st, int* endIndex){
         }
         
         if(i == st->count){
-            isHFA = 1;
+            r = 1;
         }
     }while(0);
     
-    if(isHFA){
-        st->passType = SFFI_PASS_BY_VR_MONO;
-    }
-    else {
-        if( st->size <= 16)
-            st->passType = SFFI_PASS_BY_GR_SHARE;
-        else
-            st->passType = SFFI_PASS_BY_POINT;
-    }
-
-end:
-    return err_code;
+    return r;
 }
 
-int sffi_get_st(const char* sign, struct sffi_st* st){
-    return sffi_get_st_inner(sign, st, 0);
+UChar sffi_get_bt_size(UChar signCode){
+    if(signCode >= 'a' && signCode <= 'z'){
+        return GBaseTypeSize[signCode-'a'];
+    }
+    return 0;
+}
+
+/*
+ 通过签名，生成到结构体的信息，包括结构体有几个成员，结构体的偏移，每个成员的大小和偏移等
+ sign      签名
+ st        结构体信息
+ endIndex  描述结构体签名结束的地方, 比如 “[cdfi]”, ‘]’ 后就是index的位置
+ */
+int sffi_prep_st_inner(const char* sign, struct sffi_st* st, int* endIndex){
+    if(!sign || sign[0] == 0 || !st){
+        return SFFI_ERR_INVALID_PARAMS;
+    }
+    
+    int errCode = SFFI_ERR_OK;
+    char signCode = 0;
+    
+    UChar count = 0;      //结构体成员数，如果有子结构体，会展开
+    UChar align = 0;      //结构体对齐
+    UChar offset = 0;     //成员的偏移
+    UChar fixedAlign = 16;//结构体强制的对齐大小
+    
+    int index = 0;
+    if(sign[index] == '[')
+        index++;
+
+    for(; sign[index] != 0; index++){
+        signCode = sign[index];
+        
+        if(signCode == ']'){ //结构体结尾，退出
+            index++;
+            break;
+        }
+        
+        UChar numSize = sffi_get_bt_size(signCode);
+        if(numSize > 0){ //基本类型
+            if(count >= SFFI_MAX_ARG_COUNT){ //如果成员数超过最大限制
+                SFFI_FUNC_RETURN(SFFI_ERR_OVERFLOW);
+            }
+            
+            //对齐
+            offset = SFFI_ALIGN(offset, fixedAlign < numSize ? fixedAlign : numSize);
+            
+            if(align < numSize) //如果成员的对齐，大于结构体的对齐，更新结构体对齐
+                align = numSize;
+            
+            struct sffi_st_member* num = &st->members[count++];
+            num->sign = signCode;
+            num->offset = offset;
+            num->size = numSize;
+            offset += numSize;
+        }
+        else {
+            switch (signCode) {
+                case '1':
+                case '2':
+                case '4':
+                case '8':
+                {
+                    //是数字， [1icic] 表示 强制对齐为1的结构体
+                    if(index != 0 && sign[index-1] != '['){ // '[' 后跟的数表示结构体强制对齐的大小，可选
+                        SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
+                    }
+                    
+                    //align = 16
+                    if(signCode == '1' && sign[index+1] == '6'){
+                        index++;
+                        fixedAlign = 16;
+                    }
+                    else
+                        fixedAlign = signCode-'0';
+                }
+                    break;
+                    
+                case '[':
+                {   //结构体开始
+                    int rIndex = 0;
+                    struct sffi_st sub = {0};
+                    errCode = sffi_prep_st_inner(&sign[++index], &sub, &rIndex);
+                    SFFI_CHECK_RESULT();
+
+                    index += rIndex-1;
+                    
+                    //对齐
+                    offset = SFFI_ALIGN(offset, fixedAlign < sub.align ? fixedAlign : sub.align);
+
+                    if(align < sub.align)
+                        align = sub.align;
+
+                    //把子结构的成员展开，添加到总的队列中
+                    for(int i = 0; i < sub.count; i++, count++){
+                        if(count >= SFFI_MAX_ARG_COUNT){
+                            SFFI_FUNC_RETURN(SFFI_ERR_OVERFLOW);
+                        }
+                        
+                        st->members[count] = sub.members[i];
+                        st->members[count].offset += offset;
+                    }
+                    
+                    offset += sub.size;
+                }
+                    break;
+                default:
+                {
+                    SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
+                }
+                    break;
+            }
+        }
+    }
+    
+    st->align = fixedAlign < align ? fixedAlign : align;
+    st->count = count;
+    st->size = SFFI_ALIGN(offset, st->align);
+    
+    if(endIndex)
+        *endIndex = index;
+    
+    //根据结构体类型，设置结构体传参规则
+    st->passType = sffi_is_hfa(st) ? SFFI_PASS_BY_VR_MONO : (st->size <= 16? SFFI_PASS_BY_GR_SHARE : SFFI_PASS_BY_POINT);
+
+end:
+    return errCode;
+}
+
+int sffi_prep_st(const char* sign, struct sffi_st* st){
+    return sffi_prep_st_inner(sign, st, 0);
 }
 
 int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
@@ -335,19 +331,19 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
     if(!sign)
         sign = defSign;
     
-    if(countFixArg < 0 || countFixArg > 128 || !rt){
+    if(countFixArg < 0 || !rt){
         return SFFI_ERR_INVALID_PARAMS;
     }
     
-    int err_code = SFFI_ERR_OK;
+    int errCode = SFFI_ERR_OK;
     
     char signCode = 0; //临时
     int index = 0;     //签名位置的索引
     
     //先处理返回值=========================================
-    unsigned char sizeRT = 0;       //返回值的大小
-    unsigned char countRT = 0;      //返回值包含元素的个数，如果是结构体，指的就是结构体成员的个数
-    unsigned char rtPassType = 0;   //返回值的传递类型
+    UChar sizeRT = 0;       //返回值的大小
+    UChar countRT = 0;      //返回值包含元素的个数，如果是结构体，指的就是结构体成员的个数
+    UChar rtPassType = 0;   //返回值的传递类型
     
     {
         signCode = sign[index];
@@ -355,7 +351,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
         if(signCode == '['){             //返回值是结构体
             struct sffi_st st;
             int endIndex = 0;
-            err_code = sffi_get_st_inner(&sign[1], &st, &endIndex);
+            errCode = sffi_prep_st_inner(&sign[1], &st, &endIndex);
             SFFI_CHECK_RESULT();
             
             sizeRT = st.size;           //大小
@@ -366,11 +362,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
         }
         else {
             //是普通类型
-            if(signCode < 'a' || signCode > 'z'){
-                SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
-            }
-
-            sizeRT = gBaseTypeSize[signCode-'a'];
+            sizeRT = sffi_get_bt_size(signCode);
             if(sizeRT != 0) {
                 if(sizeRT > 32){ //如果是通过寄存器返回，大小不能超过 8*4
                     SFFI_FUNC_RETURN(SFFI_ERR_INVALID_PARAMS);
@@ -378,7 +370,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                 
                 countRT = 1;
                 
-                if(gBaseTypeFFlag[signCode-'a'])
+                if(GBaseTypeFFlag[signCode-'a'])
                     rtPassType = SFFI_PASS_BY_VR_MONO;
                 else
                     rtPassType = SFFI_PASS_BY_GR_SHARE;
@@ -413,7 +405,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                 //结构体的开始，分析结构体信息
                 struct sffi_st st;
                 int endIndex = 0;
-                err_code = sffi_get_st_inner(&sign[index+1], &st, &endIndex);
+                errCode = sffi_prep_st_inner(&sign[index+1], &st, &endIndex);
                 SFFI_CHECK_RESULT();
                 
                 index += endIndex;
@@ -425,8 +417,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                     nOrgArgCount++; //结构体算 1 个原始参数
                     
                     if(st.passType == SFFI_PASS_BY_VR_MONO){ //通过浮点寄存器传，每个成员，一个寄存器
-                        //浮点寄存器够不够？
-                        if(st.count <= (8-NSRN)){
+                        if(st.count <= (8-NSRN)){ //浮点寄存器够么？
                             //够, 每个成员，单独保存在一个浮点寄存器中
                             for(int count = 0; count < st.count; count++){
                                 struct sffi_arg* arg = &args[nArgCount++];
@@ -498,7 +489,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                 SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
             }
             
-            int tSize = gBaseTypeSize[signCode-'a'];
+            int tSize = GBaseTypeSize[signCode-'a'];
             if(tSize == 0){
                  SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
             }
@@ -512,7 +503,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
             }
 
             char hasProc = 0;
-            if(gBaseTypeFFlag[signCode-'a']){
+            if(GBaseTypeFFlag[signCode-'a']){
                 //浮点类型 且 有
                 if(NSRN < 8){
                     arg->destType = 2;
@@ -555,11 +546,11 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
     (*rt)->sizeRT = sizeRT;
     (*rt)->countRT = countRT;
     (*rt)->countArg = nArgCount;
-    (*rt)->countFixArg = (unsigned char)countFixArg;
+    (*rt)->countFixArg = (UChar)countFixArg;
     sffi_memcpy(&(*rt)->args, args, sizeof(struct sffi_arg) * nArgCount);
     
 end:
-    return err_code;
+    return errCode;
 }
 
 void sffi_free_ctpl(struct sffi_ctpl* ctpl){
@@ -572,12 +563,12 @@ int sffi_call_with_ctpl(struct sffi_ctpl* ctpl, unsigned long* args, void* addr,
     if(!ctpl || !addr)
         return SFFI_ERR_INVALID_PARAMS;
     
-    int err_code = SFFI_ERR_OK;
+    int errCode = SFFI_ERR_OK;
     
     //准备存放参数的空间
     unsigned long XR[8] = {0};  //x0-x7
     unsigned long* VR = 0;      //d0-d7
-    unsigned char* Stack = 0;   //栈空间
+    UChar* Stack = 0;   //栈空间
     
     if(ctpl->sizeVR > 0)
         VR = alloca(sizeof(long)*ctpl->sizeVR);
@@ -601,8 +592,8 @@ int sffi_call_with_ctpl(struct sffi_ctpl* ctpl, unsigned long* args, void* addr,
             SFFI_FUNC_RETURN(SFFI_ERR_INVALID_PARAMS);
         }
 
-        if(arg->isST) //如果是结构体，arg是一指向结构体的指针，通过指针+便宜，得到成员变量地址
-            src = ((unsigned char*)args[arg->index]) + arg->offset;
+        if(arg->isST) //如果是结构体，arg是一指向结构体的指针，通过指针+偏移，得到成员变量地址
+            src = ((UChar*)args[arg->index]) + arg->offset;
         else
             src = &args[arg->index];
             
@@ -620,7 +611,7 @@ int sffi_call_with_ctpl(struct sffi_ctpl* ctpl, unsigned long* args, void* addr,
         else if(ctpl->rtPassType == SFFI_PASS_BY_VR_MONO){ //独占浮点寄存器
             int memberSize = ctpl->sizeRT / ctpl->countRT; //只有HFA会走这里，一定是1-4个相同的float或者double
             for(int i = 0; i < ctpl->countRT; i++){
-                sffi_memcpy(((unsigned char*)rt + i * memberSize), &XR[4+i], memberSize);
+                sffi_memcpy(((UChar*)rt + i * memberSize), &XR[4+i], memberSize);
             }
         }
         //ctpl->rtPassType == SFFI_PASS_BY_POINT 不用处理，已经通过x8设置好了
@@ -628,7 +619,7 @@ int sffi_call_with_ctpl(struct sffi_ctpl* ctpl, unsigned long* args, void* addr,
     }
     
 end:
-    return err_code;
+    return errCode;
 }
 
 int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* rt, int fixedArg){
@@ -636,7 +627,7 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
     if(!sign)
         sign = defSign;
     
-    int err_code = SFFI_ERR_OK;
+    int errCode = SFFI_ERR_OK;
 
     if(!addr || (sign[1] != 0 && args == 0)){
         SFFI_FUNC_RETURN(SFFI_ERR_INVALID_PARAMS);
@@ -650,7 +641,7 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
 
     unsigned long XR[8] = {0}; //x0-x7
     unsigned long* VR = 0;     //d0-d7  用到才分配栈空间
-    unsigned char* Stack = 0;  //stack  用到才分配栈空间
+    UChar* Stack = 0;  //stack  用到才分配栈空间
       
     for(int i = 1; sign[i] != 0; i++){
         //IOS Arm64 变参部分直接进堆栈
@@ -660,16 +651,7 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
         }
         
         char signCode = sign[i];
-        
-        //signCode 是否有效？
-        if(signCode < 'a' || signCode > 'z'){
-            SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
-        }
-        
-        //得到类型的大小
-        int tSize = gBaseTypeSize[signCode-'a'];
-        
-        //大小是否合法？
+        int tSize = sffi_get_bt_size(signCode);
         if(tSize == 0){
             SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
         }
@@ -679,7 +661,7 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
         int* pNR = &NGRN;
         
         //如果是浮点数，改为操作浮点数相关的变量 VR NSRN
-        if(gBaseTypeFFlag[signCode-'a']){
+        if(GBaseTypeFFlag[signCode-'a']){
             if(!VR)
                 VR = alloca(8*8);
             
@@ -721,9 +703,9 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
 
     //如果 rt 有效，根据 rt 的类型，设置数值
     if(rt){
-        int tSize = gBaseTypeSize[sign[0]-'a'];
+        int tSize = GBaseTypeSize[sign[0]-'a'];
         if(tSize > 0){
-            if(gBaseTypeFFlag[sign[0]-'a'])
+            if(GBaseTypeFFlag[sign[0]-'a'])
                 sffi_memcpy(rt, &XR[4], tSize);
             else
                 sffi_memcpy(rt, &XR[0], tSize);
@@ -731,34 +713,29 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
     }
     
 end:
-    return err_code;
+    return errCode;
 }
 
 #else
 
-int sffi_call(void* addr, const char* sign, unsigned long* args, void* rt, int fixedArg){
+int sffi_call(const char* sign, unsigned long* args, void* addr, void* rt){
     return SFFI_ERR_UNSUPPORT_ARCH;
 }
-
-int sffi_call_var(void* addr, const char* sign, unsigned long* args, void* rt, int fixedArg){
+int sffi_prep_st(const char* sign, struct sffi_st* st){
     return SFFI_ERR_UNSUPPORT_ARCH;
 }
+int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* rt, int fixedArg){
+    return SFFI_ERR_UNSUPPORT_ARCH;
+}
+int sffi_call_var(const char* sign, unsigned long* args, void* addr, void* rt, int fixedArg){
+    return SFFI_ERR_UNSUPPORT_ARCH;
+}
+int sffi_mk_ctpl(const char* sign, int fixedArg, struct sffi_ctpl** rt){
+    return SFFI_ERR_UNSUPPORT_ARCH;
+}
+int sffi_call_with_ctpl(struct sffi_ctpl* ctpl, unsigned long* args, void* addr, void* rt){
+    return SFFI_ERR_UNSUPPORT_ARCH;
+}
+void sffi_free_ctpl(struct sffi_ctpl* ctpl){}
 
 #endif //__arm64__
-
-
-
-
-
-
-
-
-//save x0 d0
-/*__asm__ __volatile__(
-                     "str x0, %0\n"
-                     "str d0, %1\n"
-                     :"=m" (ulR), "=m" (dbR)
-                     :
-                     :"%x0", "%d0"
-                     );
-*/

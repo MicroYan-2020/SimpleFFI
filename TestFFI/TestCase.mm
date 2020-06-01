@@ -3,7 +3,7 @@
 //  TestFFI
 //
 //  Created by micro on 2020/4/27.
-//  Copyright © 2020 yanjun. All rights reserved.
+//  Copyright © 2020 micro. All rights reserved.
 //
 
 #import "TestCase.h"
@@ -306,7 +306,7 @@ double add_var(int a, double b, ...){
 
 void TestST(const char* name, const char* sign, int align, int size, int num_count, int* offsets){
     struct sffi_st st;
-    sffi_get_st(sign, &st);
+    sffi_prep_st(sign, &st);
     
     if(st.align != align){
         GTCErrFlag = true;
@@ -501,7 +501,7 @@ void RunTest##NAME(){ \
     }\
     struct NAME a;\
     for(int i = 0; i < sizeof(a); i++){\
-        ((unsigned char*)&a)[i] = (unsigned char)rand();\
+        ((UChar*)&a)[i] = (UChar)rand();\
     }\
     unsigned long args[6] = {'Z', (unsigned long)&a, (unsigned long)&a, (unsigned long)&a, 'A', (unsigned long)&a};\
     struct NAME b;\
@@ -548,7 +548,7 @@ void RunTestNAME(){
     }
     struct NAME a;
     for(int i = 0; i < sizeof(a); i++){
-        ((unsigned char*)&a)[i] = i+1;//(unsigned char)rand();
+        ((UChar*)&a)[i] = i+1;//(UChar)rand();
     }
     unsigned long args[3] = {(unsigned long)&a, (unsigned long)&a, (unsigned long)&a};
     struct NAME b;
@@ -591,18 +591,18 @@ void TestSTructLayout(const char* name){
     TestST(name, strSign.c_str(), offsetof(Foo2, b), sizeof(Foo1), 10, offsets);
 }
 
-void SpliceSignStr(std::string& str, int fixAlign){}
+void SpliceSignStr(std::string& str, int fixedAlign){}
 
 template <class T ,class...  Args>
-void SpliceSignStr(std::string& str, int fixAlign, T var, Args...args){
+void SpliceSignStr(std::string& str, int fixedAlign, T var, Args...args){
     if(str.empty()){
-        if(fixAlign == 1 ||
-           fixAlign == 2 ||
-           fixAlign == 4 ||
-           fixAlign == 8){
-            str += ('0'+fixAlign);
+        if(fixedAlign == 1 ||
+           fixedAlign == 2 ||
+           fixedAlign == 4 ||
+           fixedAlign == 8){
+            str += ('0'+fixedAlign);
         }
-        else if(fixAlign == 16){
+        else if(fixedAlign == 16){
             str += "16";
         }
     }
@@ -611,13 +611,13 @@ void SpliceSignStr(std::string& str, int fixAlign, T var, Args...args){
        (var == '[' || var == ']')){
         str += var;
         if(var == '['){
-            if(fixAlign == 1 ||
-               fixAlign == 2 ||
-               fixAlign == 4 ||
-               fixAlign == 8){
-                str += ('0'+fixAlign);
+            if(fixedAlign == 1 ||
+               fixedAlign == 2 ||
+               fixedAlign == 4 ||
+               fixedAlign == 8){
+                str += ('0'+fixedAlign);
             }
-            else if(fixAlign == 16){
+            else if(fixedAlign == 16){
                 str += "16";
             }
         }
@@ -626,12 +626,12 @@ void SpliceSignStr(std::string& str, int fixAlign, T var, Args...args){
         str += GetTypeAttr<T>()->sign[0];
     }
     
-    SpliceSignStr(str, fixAlign, args...);
+    SpliceSignStr(str, fixedAlign, args...);
 }
 
 template<class T1, class T2, class T3, class T4, class T5, class T6, class T7, class T8, class T9, class T10>
-void SpliceSignStrWith10(std::string& str, int fixAlign){
-    SpliceSignStr(str, fixAlign, VarProc<T1>::min(), '[', VarProc<T2>::min(), VarProc<T3>::min(), VarProc<T4>::min(),
+void SpliceSignStrWith10(std::string& str, int fixedAlign){
+    SpliceSignStr(str, fixedAlign, VarProc<T1>::min(), '[', VarProc<T2>::min(), VarProc<T3>::min(), VarProc<T4>::min(),
                   VarProc<T5>::min(), ']', '[',  VarProc<T6>::min(), VarProc<T7>::min(), VarProc<T8>::min(), ']',
                   VarProc<T9>::min(), VarProc<T10>::min());
 }

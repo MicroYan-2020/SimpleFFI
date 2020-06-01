@@ -3,7 +3,7 @@
 //  TestFFI
 //
 //  Created by micro on 2020/4/27.
-//  Copyright © 2020 yanjun. All rights reserved.
+//  Copyright © 2020 micro. All rights reserved.
 //
 
 #import "AppDelegate.h"
