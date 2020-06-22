@@ -14,17 +14,17 @@ extern "C" {
 #endif
 
 /*
- IOS Arm64 下动态调用所有参数都是基本类型的函数
+ IOS Arm32/64 下动态调用所有参数都是基本类型的函数
  支持的类型     类型大小  对齐     签名字符
  int8_t         1       1        c
  int16_t        2       2        s
  int32_t        4       4        i
- int64_t        8       8        l
- uint8_t        1       1        m
- uint16_t       2       2        w
- uint32_t       4       4        u
- uint64_t       8       8        n
- void*          8       8        p
+ int64_t       4/8     4/8       l
+ uint8_t        1       1        m(C)
+ uint16_t       2       2        w(S)
+ uint32_t       4       4        u(I)
+ uint64_t      4/8     4/8       n(L)
+ void*         4/8     4/8       p
  float          4       4        f
  double         8       8        d
  void           0       0        v

@@ -123,10 +123,6 @@ __attribute__ ((naked)) void sffi_raw_call(unsigned long* regX, unsigned long* r
 #define SFFI_FUNC_RETURN(ERR_CODE) {errCode=ERR_CODE;goto end;}
 #define SFFI_CHECK_RESULT(){if(errCode!=SFFI_ERR_OK){ goto end; }}
 
-//                                a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
-static char GBaseTypeSize[26]  = {0,0,1,8,0,4,0,0,4,0,0,8,1,8,0,8,0,0,2,0,4,0,2,0,0,0}; // 根据signCode 得到对应类型的大小
-static char GBaseTypeFFlag[26] = {0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // 根据signCode 得到是否是浮点数
-
 int sffi_call(const char* sign, unsigned long* args, void* addr, void* rt){
     return sffi_call_var(sign, args, addr, rt, 0);
 }
@@ -193,9 +189,28 @@ char sffi_is_hfa(struct sffi_st* st){
     return r;
 }
 
+UChar sffi_get_bt_fflag(UChar signCode){
+    if(signCode == 'f' || signCode == 'd')
+        return 1;
+    
+    return 0;
+}
+
 UChar sffi_get_bt_size(UChar signCode){
+    //                                a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+    static char GBaseTypeSize[26]  = {0,0,1,8,0,4,0,0,4,0,0,8,1,8,0,8,0,0,2,0,4,0,2,0,0,0}; // 根据signCode 得到对应类型的大小
+    
     if(signCode >= 'a' && signCode <= 'z'){
         return GBaseTypeSize[signCode-'a'];
+    }
+    else {
+        switch (signCode) {
+            case 'C': return 1;
+            case 'S': return 2;
+            case 'I': return 4;
+            case 'L': return 8;
+            default: ;
+        }
     }
     return 0;
 }
@@ -370,7 +385,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                 
                 countRT = 1;
                 
-                if(GBaseTypeFFlag[signCode-'a'])
+                if(sffi_get_bt_fflag(signCode))
                     rtPassType = SFFI_PASS_BY_VR_MONO;
                 else
                     rtPassType = SFFI_PASS_BY_GR_SHARE;
@@ -489,7 +504,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
                 SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
             }
             
-            int tSize = GBaseTypeSize[signCode-'a'];
+            int tSize = sffi_get_bt_size(signCode);
             if(tSize == 0){
                  SFFI_FUNC_RETURN(SFFI_ERR_UNSUPPORT_TYPE);
             }
@@ -503,7 +518,7 @@ int sffi_mk_ctpl(const char* sign, int countFixArg, struct sffi_ctpl** rt){
             }
 
             char hasProc = 0;
-            if(GBaseTypeFFlag[signCode-'a']){
+            if(sffi_get_bt_fflag(signCode)){
                 //浮点类型 且 有
                 if(NSRN < 8){
                     arg->destType = 2;
@@ -661,7 +676,7 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
         int* pNR = &NGRN;
         
         //如果是浮点数，改为操作浮点数相关的变量 VR NSRN
-        if(GBaseTypeFFlag[signCode-'a']){
+        if(sffi_get_bt_fflag(signCode)){
             if(!VR)
                 VR = alloca(8*8);
             
@@ -703,9 +718,9 @@ int sffi_call_var_demo(const char* sign, unsigned long* args, void* addr, void* 
 
     //如果 rt 有效，根据 rt 的类型，设置数值
     if(rt){
-        int tSize = GBaseTypeSize[sign[0]-'a'];
+        int tSize = sffi_get_bt_size(sign[0]);
         if(tSize > 0){
-            if(GBaseTypeFFlag[sign[0]-'a'])
+            if(sffi_get_bt_fflag(sign[0]))
                 sffi_memcpy(rt, &XR[4], tSize);
             else
                 sffi_memcpy(rt, &XR[0], tSize);
